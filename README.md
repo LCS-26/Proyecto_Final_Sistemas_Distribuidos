@@ -1,44 +1,61 @@
-# Stark Industries - Sistema de Seguridad Concurrente (MVP)
+# Stark Industries - Sistema de Seguridad Concurrente (Microservicios)
 
-MVP en Spring Boot para gestionar eventos de sensores en tiempo real con procesamiento concurrente, control de acceso por roles y alertas por WebSocket.
+Guia canonica del proyecto `Grupo1`.
 
-## Funcionalidades
+## Decisiones cerradas
 
-- Ingesta REST de eventos de sensores (`MOVEMENT`, `TEMPERATURE`, `ACCESS`)
-- Procesamiento asincrono con `@Async` y `ThreadPoolTaskExecutor`
-- Persistencia con Spring Data JPA sobre H2 en memoria
-- Generacion de alertas criticas y publicacion por STOMP/WebSocket
-- Seguridad con Spring Security y autenticacion Basic
-- Monitorizacion con Actuator (`health`, `info`, `metrics`)
+- WebSocket de alertas: **directo en `alert-service`** (`/ws/alerts`, topic `/topic/alerts`)
+- Entrada REST de clientes: **via `gateway-service`** (`http://localhost:8080/api/...`)
+- Version Java unificada: **Java 21**
+- README canonico: **este archivo `README.md`**
 
-## Credenciales de prueba
+## Arquitectura
 
-- `sensor-node / sensor-pass` -> rol `SENSOR`
-- `operator / operator-pass` -> rol `OPERATOR`
-- `admin / admin-pass` -> rol `ADMIN`
+- `gateway-service` (puerta de entrada REST + seguridad)
+- `sensor-movement-service` (movimiento + sensor sismico de puerta)
+- `sensor-temperature-service`
+- `sensor-access-service` (acceso + puerta abierta)
+- `alert-service` (almacen de alertas en memoria + REST + STOMP/WebSocket)
 
-## Endpoints principales
+## Credenciales de prueba (gateway)
 
-- `POST /api/sensors/events`
-- `GET /api/sensors/events/{type}`
+- `sensor-node / sensor-pass` -> `ROLE_SENSOR`
+- `operator / operator-pass` -> `ROLE_OPERATOR`
+- `admin / admin-pass` -> `ROLE_ADMIN`
+
+## Endpoints principales (gateway)
+
+- `POST /api/movement/events`
+- `POST /api/seismic/events`
+- `POST /api/temperature/events`
+- `POST /api/access/events`
+- `POST /api/door-open/events`
 - `POST /api/access/check`
 - `GET /api/alerts`
-- `GET /actuator/health`
-- WebSocket STOMP: `ws://localhost:8080/ws/alerts`, topic `/topic/alerts`
 
-## Ejecutar
+## WebSocket de alertas
+
+- Endpoint STOMP: `ws://localhost:8090/ws/alerts`
+- Topic: `/topic/alerts`
+
+## Ejecutar tests
 
 ```bash
-./mvnw spring-boot:run
+./mvnw test
 ```
 
-## Probar rapidamente
+## Ejecutar con Docker Compose
 
 ```bash
-curl -u sensor-node:sensor-pass -X POST http://localhost:8080/api/sensors/events \
+docker compose up --build
+```
+
+## Prueba rapida
+
+```bash
+curl -u sensor-node:sensor-pass -X POST http://localhost:8080/api/movement/events \
   -H 'Content-Type: application/json' \
-  -d '{"type":"TEMPERATURE","source":"lab-01","value":72.5,"details":"overheat"}'
+  -d '{"source":"cam-01","value":1.4,"details":"main hall"}'
 
 curl -u operator:operator-pass http://localhost:8080/api/alerts
 ```
-
