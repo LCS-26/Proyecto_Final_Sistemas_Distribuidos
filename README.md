@@ -38,6 +38,13 @@ Guia canonica del proyecto `Grupo1`.
 - Endpoint STOMP: `ws://localhost:8090/ws/alerts`
 - Topic: `/topic/alerts`
 
+## Seguridad interna minima
+
+- Endpoint interno protegido: `POST /internal/alerts` en `alert-service`
+- Cabecera requerida: `X-Internal-Token`
+- Configuracion por servicio: `internal.token`
+- Variable de entorno soportada: `INTERNAL_TOKEN` (por defecto: `stark-internal-token`)
+
 ## Ejecutar tests
 
 ```bash

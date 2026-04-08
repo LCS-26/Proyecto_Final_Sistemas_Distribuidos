@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: alert-service/Dockerfile
+    environment:
+      INTERNAL_TOKEN: stark-internal-token
     ports:
       - "8090:8090"
 
@@ -12,6 +14,7 @@ services:
       dockerfile: sensor-movement-service/Dockerfile
     environment:
       ALERT_SERVICE_URL: http://alert-service:8090
+      INTERNAL_TOKEN: stark-internal-token
     ports:
       - "8081:8081"
     depends_on:
@@ -23,6 +26,7 @@ services:
       dockerfile: sensor-temperature-service/Dockerfile
     environment:
       ALERT_SERVICE_URL: http://alert-service:8090
+      INTERNAL_TOKEN: stark-internal-token
     ports:
       - "8082:8082"
     depends_on:
@@ -34,6 +38,7 @@ services:
       dockerfile: sensor-access-service/Dockerfile
     environment:
       ALERT_SERVICE_URL: http://alert-service:8090
+      INTERNAL_TOKEN: stark-internal-token
     ports:
       - "8083:8083"
     depends_on:

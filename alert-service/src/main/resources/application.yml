@@ -5,9 +5,12 @@ spring:
   application:
     name: alert-service
 
+internal:
+  token: ${INTERNAL_TOKEN:stark-internal-token}
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics
 
