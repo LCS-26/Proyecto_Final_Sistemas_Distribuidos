@@ -1,9 +1,5 @@
 # Análisis Completo del Proyecto — Stark Industries Security System
 
-> Asignatura: Programación Concurrente (UAX)
-> Práctica: Implementación de un Sistema de Seguridad Concurrente
-> Fecha de análisis: Abril 2026
-
 ---
 
 ## 1. Estructura General del Proyecto

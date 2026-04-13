@@ -1,8 +1,5 @@
 # Implementación de Nuevas Funcionalidades — Stark Industries Security System
 
-> Documento de referencia para la práctica de Programación Concurrente (UAX)
-> Describe todos los cambios realizados, qué concepto de los apuntes cubre cada uno y dónde encontrarlo.
-
 ---
 
 ## Índice
