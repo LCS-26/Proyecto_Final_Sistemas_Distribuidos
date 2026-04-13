@@ -28,7 +28,7 @@
 | Comunicación sensores→alert | HTTP REST directo (`AlertClient`) | **RabbitMQ AMQP** como canal principal + HTTP como fallback |
 | Persistencia de alertas | `CopyOnWriteArrayList` en memoria | **Spring Data JPA + H2** con `@Transactional` |
 | Descubrimiento de servicios | URLs hardcodeadas en variables de entorno | **Eureka Server** + Eureka Client en cada servicio |
-| `application.properties` | Solo `application.yml` | **`application.properties`** en cada microservicio (requerimiento del profesor) |
+| `application.properties` | Solo `application.yml` (puerto, nombre, actuator) | **`application.properties` añadido** en cada microservicio con config Eureka + RabbitMQ (ambos ficheros coexisten; requerimiento del profesor) |
 | `@Async` en temperature | AUSENTE (bug) | `@EnableAsync` + `TemperatureAsyncAlertService` |
 | Ambitos de beans | Solo Singleton implícito | `@Scope("prototype")` demostrado con `AlertEventBuilder` |
 | Ciclo de vida de beans | Sin callbacks explícitos | `@PostConstruct` y `@PreDestroy` en `RabbitMQConfig` y `AlertEventBuilder` |
@@ -45,24 +45,24 @@ Se añadió el BOM de Spring Cloud y el módulo `eureka-server`:
 
 ```xml
 <properties>
-    <spring-cloud.version>2025.0.0</spring-cloud.version>
+   <spring-cloud.version>2024.0.1</spring-cloud.version>
 </properties>
 
 <modules>
-    <module>eureka-server</module>   <!-- NUEVO -->
-    ...
+<module>eureka-server</module>   <!-- NUEVO -->
+...
 </modules>
 
 <dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-dependencies</artifactId>
-            <version>${spring-cloud.version}</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
+<dependencies>
+   <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-dependencies</artifactId>
+      <version>${spring-cloud.version}</version>
+      <type>pom</type>
+      <scope>import</scope>
+   </dependency>
+</dependencies>
 </dependencyManagement>
 ```
 
@@ -100,9 +100,9 @@ eureka-server/
 @SpringBootApplication
 @EnableEurekaServer
 public class EurekaServerApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(EurekaServerApplication.class, args);
-    }
+   public static void main(String[] args) {
+      SpringApplication.run(EurekaServerApplication.class, args);
+   }
 }
 ```
 
@@ -164,19 +164,19 @@ AlertConsumer.receiveAlert()
 @ConditionalOnProperty(name = "stark.amqp.enabled", havingValue = "true", matchIfMissing = true)
 public class AmqpAlertPublisher implements AlertPublisher {
 
-    private final RabbitTemplate rabbitTemplate;
-    private final AlertPublisher httpFallback;   // @Qualifier("httpAlertPublisher")
+   private final RabbitTemplate rabbitTemplate;
+   private final AlertPublisher httpFallback;   // @Qualifier("httpAlertPublisher")
 
-    @Override
-    public void publish(String source, double value, String message, String correlationId) {
-        try {
-            rabbitTemplate.convertAndSend(EXCHANGE_NAME, ROUTING_KEY,
-                    new AlertAmqpMessage("HIGH", message, "MOVEMENT", source, value, Instant.now(), correlationId));
-        } catch (Exception ex) {
-            // Si RabbitMQ no está disponible → fallback HTTP
-            httpFallback.publish(source, value, message, correlationId);
-        }
-    }
+   @Override
+   public void publish(String source, double value, String message, String correlationId) {
+      try {
+         rabbitTemplate.convertAndSend(EXCHANGE_NAME, ROUTING_KEY,
+                 new AlertAmqpMessage("HIGH", message, "MOVEMENT", source, value, Instant.now(), correlationId));
+      } catch (Exception ex) {
+         // Si RabbitMQ no está disponible → fallback HTTP
+         httpFallback.publish(source, value, message, correlationId);
+      }
+   }
 }
 ```
 
@@ -190,12 +190,12 @@ public class AmqpAlertPublisher implements AlertPublisher {
 @ConditionalOnProperty(name = "stark.amqp.enabled", havingValue = "true", matchIfMissing = true)
 public class AlertConsumer {
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
-    public void receiveAlert(AlertAmqpMessage amqpMessage) {
-        AlertRequest request = new AlertRequest(/* ... */);
-        alertService.save(request, amqpMessage.correlationId());       // → JPA
-        alertNotificationService.publish(request, amqpMessage.correlationId()); // → WebSocket
-    }
+   @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
+   public void receiveAlert(AlertAmqpMessage amqpMessage) {
+      AlertRequest request = new AlertRequest(/* ... */);
+      alertService.save(request, amqpMessage.correlationId());       // → JPA
+      alertNotificationService.publish(request, amqpMessage.correlationId()); // → WebSocket
+   }
 }
 ```
 
@@ -205,24 +205,24 @@ public class AlertConsumer {
 @Configuration
 public class RabbitMQConfig {
 
-    @Bean @ConditionalOnProperty(...)
-    public Queue alertQueue() { return new Queue(QUEUE_NAME, true); }
+   @Bean @ConditionalOnProperty(...)
+   public Queue alertQueue() { return new Queue(QUEUE_NAME, true); }
 
-    @Bean @ConditionalOnProperty(...)
-    public DirectExchange alertExchange() { return new DirectExchange(EXCHANGE_NAME); }
+   @Bean @ConditionalOnProperty(...)
+   public DirectExchange alertExchange() { return new DirectExchange(EXCHANGE_NAME); }
 
-    @Bean @ConditionalOnProperty(...)
-    public Binding alertBinding(...) { return BindingBuilder.bind(alertQueue).to(alertExchange).with(ROUTING_KEY); }
+   @Bean @ConditionalOnProperty(...)
+   public Binding alertBinding(...) { return BindingBuilder.bind(alertQueue).to(alertExchange).with(ROUTING_KEY); }
 
-    @PostConstruct
-    public void onStartup() {
-        LOGGER.info("Sistema de mensajería RabbitMQ configurado y listo");
-    }
+   @PostConstruct
+   public void onStartup() {
+      LOGGER.info("Sistema de mensajería RabbitMQ configurado y listo");
+   }
 
-    @PreDestroy
-    public void onShutdown() {
-        LOGGER.info("Cerrando sistema de mensajería RabbitMQ");
-    }
+   @PreDestroy
+   public void onShutdown() {
+      LOGGER.info("Cerrando sistema de mensajería RabbitMQ");
+   }
 }
 ```
 
@@ -246,17 +246,17 @@ Desde allí se pueden ver las colas, mensajes publicados, consumidores conectado
 @Entity
 @Table(name = "alerts")
 public class Alert {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+   @Id
+   @GeneratedValue(strategy = GenerationType.IDENTITY)
+   private Long id;
 
-    private String severity;
-    private String message;
-    private String sensorType;
-    private String source;
-    private double value;
-    private Instant timestamp;
-    private String correlationId;
+   private String severity;
+   private String message;
+   private String sensorType;
+   private String source;
+   private double value;
+   private Instant timestamp;
+   private String correlationId;
 }
 ```
 
@@ -266,7 +266,7 @@ Archivo: `alert-service/src/main/java/.../alert/model/Alert.java`
 
 ```java
 public interface AlertRepository extends JpaRepository<Alert, Long> {
-    List<Alert> findAllByOrderByTimestampDesc();
+   List<Alert> findAllByOrderByTimestampDesc();
 }
 ```
 
@@ -280,11 +280,11 @@ Archivo: `alert-service/src/main/java/.../alert/repository/AlertRepository.java`
 @Service
 public class AlertService {
 
-    @Transactional           // escritura: transacción completa con rollback automático si falla
-    public Alert save(AlertRequest request, String correlationId) { ... }
+   @Transactional           // escritura: transacción completa con rollback automático si falla
+   public Alert save(AlertRequest request, String correlationId) { ... }
 
-    @Transactional(readOnly = true)  // lectura: optimización para queries de solo lectura
-    public List<AlertRequest> findAll() { ... }
+   @Transactional(readOnly = true)  // lectura: optimización para queries de solo lectura
+   public List<AlertRequest> findAll() { ... }
 }
 ```
 
@@ -310,18 +310,18 @@ spring.h2.console.path=/h2-console
 // Antes: CopyOnWriteArrayList<AlertRequest> alerts = new CopyOnWriteArrayList<>()
 // Ahora:
 public class AlertController {
-    private final AlertService alertService;  // ← Spring Data JPA
+   private final AlertService alertService;  // ← Spring Data JPA
 
-    @PostMapping("/internal/alerts")
-    public void receiveAlert(@RequestBody AlertRequest request, ...) {
-        alertService.save(request, cid);          // persiste en H2
-        alertNotificationService.publish(request, cid);  // WebSocket
-    }
+   @PostMapping("/internal/alerts")
+   public void receiveAlert(@RequestBody AlertRequest request, ...) {
+      alertService.save(request, cid);          // persiste en H2
+      alertNotificationService.publish(request, cid);  // WebSocket
+   }
 
-    @GetMapping("/api/alerts")
-    public List<AlertRequest> alerts(...) {
-        return alertService.findAll();  // lee de H2, ordenado por fecha desc
-    }
+   @GetMapping("/api/alerts")
+   public List<AlertRequest> alerts(...) {
+      return alertService.findAll();  // lee de H2, ordenado por fecha desc
+   }
 }
 ```
 
@@ -356,7 +356,7 @@ private final AlertPublisher alertPublisher;  // → HttpAlertPublisher
 public AmqpAlertPublisher(
         RabbitTemplate rabbitTemplate,
         @Qualifier("httpAlertPublisher") AlertPublisher httpFallback) {
-    // httpFallback = HttpAlertPublisher (seleccionado por qualifier, no por @Primary)
+   // httpFallback = HttpAlertPublisher (seleccionado por qualifier, no por @Primary)
 }
 ```
 
@@ -373,24 +373,24 @@ public AmqpAlertPublisher(
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)  // nueva instancia cada vez que se pide al contenedor
 public class AlertEventBuilder {
 
-    @PostConstruct
-    public void init() {
-        // Se llama DESPUÉS de que Spring inyecta dependencias
-        // En Prototype: ocurre con CADA nueva instancia
-        LOGGER.debug("Nueva instancia de AlertEventBuilder creada (Prototype scope)");
-    }
+   @PostConstruct
+   public void init() {
+      // Se llama DESPUÉS de que Spring inyecta dependencias
+      // En Prototype: ocurre con CADA nueva instancia
+      LOGGER.debug("Nueva instancia de AlertEventBuilder creada (Prototype scope)");
+   }
 
-    @PreDestroy
-    public void destroy() {
-        // Se llama antes de destrucción del bean
-        // NOTA: Spring NO llama @PreDestroy en Prototype — el caller gestiona el ciclo de vida
-        LOGGER.debug("AlertEventBuilder siendo destruido");
-    }
+   @PreDestroy
+   public void destroy() {
+      // Se llama antes de destrucción del bean
+      // NOTA: Spring NO llama @PreDestroy en Prototype — el caller gestiona el ciclo de vida
+      LOGGER.debug("AlertEventBuilder siendo destruido");
+   }
 
-    // Fluent API
-    public AlertEventBuilder withSensorType(String sensorType) { ... }
-    public AlertEventBuilder withSource(String source) { ... }
-    public AlertEventBuilder withValue(double value) { ... }
+   // Fluent API
+   public AlertEventBuilder withSensorType(String sensorType) { ... }
+   public AlertEventBuilder withSource(String source) { ... }
+   public AlertEventBuilder withValue(double value) { ... }
 }
 ```
 
@@ -415,22 +415,22 @@ public class AlertEventBuilder {
 @Configuration
 public class AsyncConfig implements AsyncConfigurer {
 
-    @Bean(name = "taskExecutor")
-    public Executor taskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);      // mínimo 2 hilos siempre activos
-        executor.setMaxPoolSize(10);      // hasta 10 hilos si la cola está llena
-        executor.setQueueCapacity(100);   // tareas en espera antes de crear más hilos
-        executor.setThreadNamePrefix("stark-movement-async-");
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.initialize();
-        return executor;
-    }
+   @Bean(name = "taskExecutor")
+   public Executor taskExecutor() {
+      ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+      executor.setCorePoolSize(2);      // mínimo 2 hilos siempre activos
+      executor.setMaxPoolSize(10);      // hasta 10 hilos si la cola está llena
+      executor.setQueueCapacity(100);   // tareas en espera antes de crear más hilos
+      executor.setThreadNamePrefix("stark-movement-async-");
+      executor.setWaitForTasksToCompleteOnShutdown(true);
+      executor.initialize();
+      return executor;
+   }
 
-    @Override
-    public Executor getAsyncExecutor() {
-        return taskExecutor();
-    }
+   @Override
+   public Executor getAsyncExecutor() {
+      return taskExecutor();
+   }
 }
 ```
 
@@ -461,7 +461,7 @@ El hilo HTTP no espera a que se envíe la alerta. Responde inmediatamente con `2
 ```java
 // El hilo HTTP queda BLOQUEADO esperando la respuesta del alert-service
 if (critical) {
-    alertClient.sendCriticalAlert(source, value, "Overheat detected", cid);
+        alertClient.sendCriticalAlert(source, value, "Overheat detected", cid);
 }
 ```
 
@@ -469,7 +469,7 @@ if (critical) {
 ```java
 // El hilo HTTP responde inmediatamente; la alerta se envía en otro hilo
 if (critical) {
-    temperatureAsyncAlertService.sendCriticalAlert(request, cid);  // @Async
+        temperatureAsyncAlertService.sendCriticalAlert(request, cid);  // @Async
 }
 ```
 
@@ -568,7 +568,7 @@ Para que el navegador pueda cargar `index.html` sin pedir credenciales (el login
 // Antes: anyRequest().authenticated() bloqueaba index.html
 // Después:
 .authorizeHttpRequests(auth -> auth
-    .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()  // ← NUEVO
+        .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()  // ← NUEVO
     .requestMatchers("/actuator/health", "/actuator/info").permitAll()
     .requestMatchers("/api/movement/**", ...).hasAnyRole("SENSOR", "OPERATOR", "ADMIN")
     .requestMatchers("/api/access/check", "/api/alerts").hasAnyRole("OPERATOR", "ADMIN")
