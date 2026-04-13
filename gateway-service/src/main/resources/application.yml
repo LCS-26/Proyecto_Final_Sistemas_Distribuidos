@@ -1,0 +1,19 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+
+services:
+  movement-url: ${MOVEMENT_SERVICE_URL:http://localhost:8081}
+  temperature-url: ${TEMPERATURE_SERVICE_URL:http://localhost:8082}
+  access-url: ${ACCESS_SERVICE_URL:http://localhost:8083}
+  alert-url: ${ALERT_SERVICE_URL:http://localhost:8090}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+

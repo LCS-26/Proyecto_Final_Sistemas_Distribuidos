@@ -1,0 +1,19 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: sensor-temperature-service
+
+alert:
+  service-url: ${ALERT_SERVICE_URL:http://localhost:8090}
+
+internal:
+  token: ${INTERNAL_TOKEN:stark-internal-token}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+

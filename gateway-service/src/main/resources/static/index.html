@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stark Industries · Security Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <style>
+    /* ─── Variables ─── */
+    :root {
+      --bg:        #07090f;
+      --surface:   #0d1117;
+      --surface2:  #131a25;
+      --border:    #1c2b3a;
+      --border2:   #243444;
+      --gold:      #f0a500;
+      --gold-dim:  #7a5200;
+      --red:       #ff3355;
+      --red-dim:   #3d0014;
+      --blue:      #2979ff;
+      --blue-dim:  #00256e;
+      --cyan:      #00c8ff;
+      --green:     #00e676;
+      --green-dim: #00330f;
+      --orange:    #ff7043;
+      --purple:    #ce93d8;
+      --text:      #cfd8e8;
+      --text2:     #7a8fa8;
+      --text3:     #3d4f63;
+      --radius:    8px;
+      --radius-lg: 14px;
+    }
+
+    /* ─── Reset ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+    button { cursor: pointer; font-family: inherit; }
+    input, select, textarea { font-family: inherit; }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ══════════════════════════════════════════
+       LOGIN SCREEN
+    ══════════════════════════════════════════ */
+    #login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 0%, rgba(240,165,0,.08) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(41,121,255,.06) 0%, transparent 60%),
+        var(--bg);
+    }
+    #login-screen::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: .3;
+      pointer-events: none;
+    }
+    .login-card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--gold);
+      border-radius: var(--radius-lg);
+      padding: 48px 44px 40px;
+      width: 420px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(240,165,0,.05);
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .login-logo .arc {
+      display: inline-block;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 3px solid var(--gold);
+      background: radial-gradient(circle, #1a2a3a 0%, #050810 100%);
+      box-shadow: 0 0 20px rgba(240,165,0,.3), inset 0 0 15px rgba(41,121,255,.2);
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .login-logo .arc::after {
+      content: '⬡';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan);
+      font-size: 24px;
+    }
+    .login-logo h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+    .login-logo p {
+      color: var(--text2);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .login-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border2), transparent);
+      margin: 24px 0;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 6px;
+    }
+    .form-group input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .form-group input:focus { border-color: var(--gold); }
+    .btn-login {
+      width: 100%;
+      background: var(--gold);
+      color: #000;
+      border: none;
+      border-radius: var(--radius);
+      padding: 12px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 8px;
+      transition: background .2s, transform .1s;
+    }
+    .btn-login:hover { background: #ffc107; }
+    .btn-login:active { transform: scale(.98); }
+    #login-error {
+      color: var(--red);
+      font-size: 12px;
+      text-align: center;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+    .quick-login {
+      margin-top: 24px;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+    }
+    .quick-login p {
+      font-size: 11px;
+      color: var(--text3);
+      text-align: center;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .quick-btns {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .quick-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 4px;
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .5px;
+      transition: border-color .2s, color .2s;
+      text-align: center;
+    }
+    .quick-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .quick-btn .role { display: block; font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+    /* ══════════════════════════════════════════
+       DASHBOARD
+    ══════════════════════════════════════════ */
+    #dashboard { display: none; min-height: 100vh; flex-direction: column; }
+
+    /* Header */
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-brand .logo-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--gold);
+      background: radial-gradient(circle, #1a2a3a 0%, #050810 100%);
+      box-shadow: 0 0 8px rgba(240,165,0,.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+    .header-brand h2 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+    .header-brand span {
+      font-size: 11px;
+      color: var(--text3);
+      letter-spacing: 1px;
+      margin-top: 1px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .ws-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .5px;
+    }
+    .ws-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text3);
+      transition: background .3s;
+    }
+    .ws-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .ws-dot.connecting { background: var(--gold); animation: pulse 1s infinite; }
+    .ws-dot.error { background: var(--red); }
+    @keyframes pulse { 0%,100%{ opacity:1 } 50%{ opacity:.3 } }
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px 4px 6px;
+    }
+    .user-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--gold-dim);
+      border: 1px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .user-info { font-size: 12px; }
+    .user-info .name { font-weight: 500; }
+    .user-info .role-tag {
+      font-size: 10px;
+      color: var(--text3);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text2);
+      padding: 5px 12px;
+      font-size: 12px;
+      transition: border-color .2s, color .2s;
+    }
+    .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 20px 24px 0;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .stat-card.total::before  { background: linear-gradient(90deg, var(--gold), transparent); }
+    .stat-card.movement::before{ background: linear-gradient(90deg, var(--blue), transparent); }
+    .stat-card.temp::before   { background: linear-gradient(90deg, var(--red), transparent); }
+    .stat-card.access::before { background: linear-gradient(90deg, var(--purple), transparent); }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .stat-value {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-card.total   .stat-value { color: var(--gold); }
+    .stat-card.movement .stat-value { color: var(--blue); }
+    .stat-card.temp    .stat-value { color: var(--red); }
+    .stat-card.access  .stat-value { color: var(--purple); }
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+
+    /* Main content */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 16px;
+      padding: 16px 24px 24px;
+      flex: 1;
+    }
+
+    /* Panel */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .panel-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel-badge {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text2);
+    }
+    .btn-clear {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text2);
+      padding: 4px 10px;
+      font-size: 11px;
+      transition: all .2s;
+    }
+    .btn-clear:hover { border-color: var(--red); color: var(--red); }
+
+    /* Alert Feed */
+    #alert-feed {
+      height: calc(100vh - 280px);
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .alert-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--text3);
+      gap: 8px;
+    }
+    .alert-empty .icon { font-size: 32px; opacity: .4; }
+    .alert-empty p { font-size: 12px; letter-spacing: .5px; }
+
+    .alert-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: start;
+      animation: slideIn .3s ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+    @keyframes slideIn {
+      from { opacity:0; transform: translateY(-8px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .alert-item::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+    }
+    .alert-item.MOVEMENT::before { background: var(--blue); }
+    .alert-item.TEMPERATURE::before { background: var(--red); }
+    .alert-item.ACCESS::before { background: var(--purple); }
+    .alert-item.SEISMIC::before { background: var(--orange); }
+    .alert-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .alert-item.MOVEMENT   .alert-icon { background: var(--blue-dim); }
+    .alert-item.TEMPERATURE .alert-icon { background: var(--red-dim); }
+    .alert-item.ACCESS     .alert-icon { background: rgba(206,147,216,.1); }
+    .alert-item.SEISMIC    .alert-icon { background: rgba(255,112,67,.1); }
+    .alert-body {}
+    .alert-msg { font-weight: 500; color: var(--text); font-size: 13px; }
+    .alert-meta {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 3px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .alert-meta span { color: var(--text3); }
+    .alert-right { text-align: right; }
+    .alert-severity {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: rgba(255,51,85,.15);
+      color: var(--red);
+    }
+    .alert-time {
+      font-size: 10px;
+      color: var(--text3);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 4px;
+      white-space: nowrap;
+    }
+    .new-flash {
+      animation: flash .4s ease-out;
+    }
+    @keyframes flash {
+      0%  { background: rgba(240,165,0,.12); }
+      100%{ background: var(--surface2); }
+    }
+
+    /* Sensor form */
+    .sensor-form { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .field label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 5px;
+    }
+    .field input, .field select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus, .field select:focus { border-color: var(--gold); }
+    .field select { cursor: pointer; }
+    .field select option { background: var(--surface2); }
+    .value-hint {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 3px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .btn-send {
+      width: 100%;
+      background: linear-gradient(135deg, var(--gold), #c87f00);
+      color: #000;
+      border: none;
+      border-radius: var(--radius);
+      padding: 11px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-send:hover:not(:disabled) { opacity: .9; }
+    .btn-send:active:not(:disabled) { transform: scale(.98); }
+    .btn-send:disabled { opacity: .4; cursor: not-allowed; }
+    .send-result {
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 20px;
+      text-align: center;
+    }
+    .send-result.ok  { color: var(--green); }
+    .send-result.err { color: var(--red); }
+
+    .preset-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .preset-btns p {
+      font-size: 10px;
+      color: var(--text3);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .preset {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 5px 10px;
+      font-size: 11px;
+      color: var(--text2);
+      transition: all .15s;
+    }
+    .preset:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* History Table */
+    .history-section { padding: 0 24px 24px; }
+    .history-panel { }
+    .table-wrap { overflow-x: auto; max-height: 300px; overflow-y: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    thead { position: sticky; top: 0; z-index: 1; }
+    th {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text2);
+      white-space: nowrap;
+    }
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    tr:hover td { background: var(--surface2); }
+    .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .5px;
+    }
+    .tag-MOVEMENT    { background: var(--blue-dim); color: var(--blue); }
+    .tag-TEMPERATURE { background: var(--red-dim); color: var(--red); }
+    .tag-ACCESS      { background: rgba(206,147,216,.1); color: var(--purple); }
+    .tag-SEISMIC     { background: rgba(255,112,67,.1); color: var(--orange); }
+    .tag-HIGH { background: rgba(255,51,85,.15); color: var(--red); }
+
+    /* Footer refresh */
+    .table-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .table-footer span { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+    .btn-refresh {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text2);
+      padding: 4px 10px;
+      font-size: 11px;
+      transition: all .2s;
+    }
+    .btn-refresh:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* Notification toast */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 999;
+    }
+    .toast {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold);
+      border-radius: var(--radius);
+      padding: 10px 16px;
+      min-width: 240px;
+      font-size: 12px;
+      animation: toastIn .3s ease-out, toastOut .3s ease-in 3.7s forwards;
+    }
+    .toast.critical { border-left-color: var(--red); }
+    @keyframes toastIn {
+      from { opacity:0; transform: translateX(20px); }
+      to   { opacity:1; transform: translateX(0); }
+    }
+    @keyframes toastOut {
+      from { opacity:1; }
+      to   { opacity:0; }
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .main-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="arc"></div>
+      <h1>Stark Industries</h1>
+      <p>Security Control System</p>
+    </div>
+    <div class="login-divider"></div>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="usuario" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="contraseña" autocomplete="current-password" />
+    </div>
+    <button class="btn-login" onclick="doLogin()">Acceder al sistema</button>
+    <div id="login-error"></div>
+
+    <div class="quick-login">
+      <p>Acceso rápido (demo)</p>
+      <div class="quick-btns">
+        <button class="quick-btn" onclick="quickLogin('operator','operator-pass')">
+          operator
+          <span class="role">OPERATOR</span>
+        </button>
+        <button class="quick-btn" onclick="quickLogin('admin','admin-pass')">
+          admin
+          <span class="role">ADMIN</span>
+        </button>
+        <button class="quick-btn" onclick="quickLogin('sensor-node','sensor-pass')">
+          sensor-node
+          <span class="role">SENSOR</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     DASHBOARD
+═══════════════════════════════════════ -->
+<div id="dashboard">
+
+  <!-- Header -->
+  <header class="dash-header">
+    <div class="header-brand">
+      <div class="logo-dot">⬡</div>
+      <div>
+        <h2>Stark Industries</h2>
+        <span>Security Dashboard</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="ws-badge">
+        <div class="ws-dot" id="ws-dot"></div>
+        <span id="ws-label">Desconectado</span>
+      </div>
+      <div class="user-badge">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-info">
+          <div class="name" id="user-name">-</div>
+          <div class="role-tag" id="user-role">-</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card total">
+      <div class="stat-label">⚡ Total Alertas</div>
+      <div class="stat-value" id="stat-total">0</div>
+      <div class="stat-sub">eventos críticos procesados</div>
+    </div>
+    <div class="stat-card movement">
+      <div class="stat-label">📡 Movimiento</div>
+      <div class="stat-value" id="stat-movement">0</div>
+      <div class="stat-sub">alertas de movimiento</div>
+    </div>
+    <div class="stat-card temp">
+      <div class="stat-label">🌡 Temperatura</div>
+      <div class="stat-value" id="stat-temp">0</div>
+      <div class="stat-sub">alertas de sobrecalentamiento</div>
+    </div>
+    <div class="stat-card access">
+      <div class="stat-label">🔐 Acceso</div>
+      <div class="stat-value" id="stat-access">0</div>
+      <div class="stat-sub">accesos denegados</div>
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div class="main-grid">
+
+    <!-- Alert Feed -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          ⚡ Feed en tiempo real
+          <span class="panel-badge" id="feed-count">0 alertas</span>
+        </div>
+        <button class="btn-clear" onclick="clearFeed()">Limpiar</button>
+      </div>
+      <div id="alert-feed">
+        <div class="alert-empty">
+          <div class="icon">📡</div>
+          <p>Esperando alertas críticas...</p>
+          <p style="font-size:11px;color:var(--text3)">Las alertas aparecerán aquí en tiempo real via WebSocket</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sensor Controls -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">🎛 Simulador de sensores</div>
+      </div>
+      <div class="sensor-form">
+
+        <div class="field">
+          <label>Tipo de sensor</label>
+          <select id="sensor-type" onchange="onSensorTypeChange()">
+            <option value="movement">Movimiento</option>
+            <option value="temperature">Temperatura</option>
+            <option value="access">Acceso</option>
+            <option value="seismic">Sísmico</option>
+            <option value="door-open">Puerta abierta</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Fuente / ID sensor</label>
+            <input type="text" id="sensor-source" value="sensor-hall-01" />
+          </div>
+          <div class="field">
+            <label id="value-label">Valor</label>
+            <input type="number" id="sensor-value" value="1.5" step="0.1" />
+            <div class="value-hint" id="value-hint">≥ 1.0 = crítico</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Detalles / Ubicación</label>
+          <input type="text" id="sensor-details" value="Pasillo Este, Planta 3" />
+        </div>
+
+        <!-- Presets -->
+        <div class="preset-btns">
+          <p>Escenarios de prueba</p>
+          <div class="presets" id="presets-container"></div>
+        </div>
+
+        <button class="btn-send" id="btn-send" onclick="sendSensorEvent()">
+          ▶ Enviar evento
+        </button>
+        <div class="send-result" id="send-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Table -->
+  <div class="history-section" id="history-section">
+    <div class="panel history-panel">
+      <div class="panel-header">
+        <div class="panel-title">📋 Historial de alertas (Base de datos)</div>
+        <button class="btn-refresh" onclick="loadHistory()">↻ Actualizar</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Severidad</th>
+              <th>Fuente</th>
+              <th>Valor</th>
+              <th>Mensaje</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">
+              Cargando historial...
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span id="history-info">-</span>
+        <span style="font-size:11px;color:var(--text3)">Auto-refresh cada 15s</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+  /* ═══════════════════════════════════════
+     STATE
+  ═══════════════════════════════════════ */
+  let authHeader = '';
+  let currentUser = '';
+  let currentRole = '';
+  let stompClient = null;
+  let feedAlerts = [];
+  let stats = { total: 0, MOVEMENT: 0, TEMPERATURE: 0, ACCESS: 0 };
+  let historyTimer = null;
+
+  const GATEWAY = 'http://localhost:8080';
+  const WS_URL  = 'ws://localhost:8090/ws/alerts';
+  const WS_TOPIC = '/topic/alerts';
+
+  const PRESETS = {
+    movement: [
+      { label: '🏃 Intrusión', source: 'sensor-entrada-01', value: 2.5, details: 'Entrada principal' },
+      { label: '👤 Normal',   source: 'sensor-hall-02',    value: 0.3, details: 'Pasillo Central' },
+    ],
+    temperature: [
+      { label: '🔥 Sobrecalentamiento', source: 'sensor-server-01', value: 85, details: 'Sala de servidores' },
+      { label: '✅ Normal',             source: 'sensor-lab-01',    value: 22, details: 'Laboratorio B' },
+    ],
+    access: [
+      { label: '🚫 Acceso denegado', source: 'puerta-norte-01', value: 0, details: 'Puerta Norte' },
+      { label: '✅ Acceso correcto', source: 'puerta-sur-01',   value: 1, details: 'Puerta Sur' },
+    ],
+    seismic: [
+      { label: '⚡ Impacto alto', source: 'seismic-floor-01', value: 8.5, details: 'Planta baja, Zona A' },
+      { label: '〰️ Vibración', source: 'seismic-wall-01',  value: 1.2, details: 'Muro exterior' },
+    ],
+    'door-open': [
+      { label: '🚪 Puerta abierta', source: 'door-lab-01',  value: 1, details: 'Laboratorio, Zona B' },
+    ],
+  };
+
+  const VALUE_HINTS = {
+    movement:    '≥ 1.0 = alerta crítica',
+    temperature: '≥ 60°C = sobrecalentamiento',
+    access:      '≤ 0 = acceso denegado',
+    seismic:     'fuerza de impacto (kN)',
+    'door-open': '1 = abierta, 0 = cerrada',
+  };
+
+  const SENSOR_ICONS = {
+    MOVEMENT: '📡', TEMPERATURE: '🌡', ACCESS: '🔐', SEISMIC: '⚡', default: '⚠️'
+  };
+
+  /* ═══════════════════════════════════════
+     AUTH & LOGIN
+  ═══════════════════════════════════════ */
+  function quickLogin(user, pass) {
+    document.getElementById('login-user').value = user;
+    document.getElementById('login-pass').value = pass;
+    doLogin();
+  }
+
+  async function doLogin() {
+    const user = document.getElementById('login-user').value.trim();
+    const pass = document.getElementById('login-pass').value.trim();
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = '';
+
+    if (!user || !pass) {
+      errEl.textContent = 'Introduce usuario y contraseña';
+      return;
+    }
+
+    const encoded = btoa(user + ':' + pass);
+    const testHeader = 'Basic ' + encoded;
+
+    // Test credentials against /actuator/health (permit all)
+    // Use /api/alerts to check OPERATOR role, fallback for SENSOR
+    try {
+      const res = await fetch(GATEWAY + '/api/alerts', {
+        headers: { 'Authorization': testHeader }
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        // Try sensor-level endpoint
+        const res2 = await fetch(GATEWAY + '/api/movement/events', {
+          headers: { 'Authorization': testHeader }
+        });
+        if (res2.status === 401) {
+          errEl.textContent = 'Credenciales incorrectas';
+          return;
+        }
+        // It's a sensor user
+        authHeader = testHeader;
+        currentUser = user;
+        currentRole = 'SENSOR';
+      } else if (res.ok) {
+        authHeader = testHeader;
+        currentUser = user;
+        currentRole = user === 'admin' ? 'ADMIN' : 'OPERATOR';
+      } else {
+        errEl.textContent = 'Error al conectar con el servidor (' + res.status + ')';
+        return;
+      }
+    } catch (e) {
+      errEl.textContent = 'No se puede conectar con el gateway (¿está en marcha?)';
+      return;
+    }
+
+    showDashboard();
+  }
+
+  document.getElementById('login-pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  function doLogout() {
+    authHeader = '';
+    currentUser = '';
+    currentRole = '';
+    if (stompClient) stompClient.deactivate();
+    if (historyTimer) clearInterval(historyTimer);
+    feedAlerts = [];
+    stats = { total: 0, MOVEMENT: 0, TEMPERATURE: 0, ACCESS: 0 };
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-error').textContent = '';
+  }
+
+  /* ═══════════════════════════════════════
+     DASHBOARD INIT
+  ═══════════════════════════════════════ */
+  function showDashboard() {
+    document.getElementById('login-screen').style.display = 'none';
+    const dash = document.getElementById('dashboard');
+    dash.style.display = 'flex';
+
+    // User badge
+    document.getElementById('user-name').textContent = currentUser;
+    document.getElementById('user-role').textContent = currentRole;
+    document.getElementById('user-avatar').textContent = currentUser[0].toUpperCase();
+
+    // If SENSOR role, hide history (needs OPERATOR)
+    if (currentRole === 'SENSOR') {
+      document.getElementById('history-section').style.display = 'none';
+    } else {
+      document.getElementById('history-section').style.display = 'block';
+      loadHistory();
+      historyTimer = setInterval(loadHistory, 15000);
+    }
+
+    // Render presets
+    onSensorTypeChange();
+
+    // Connect WebSocket
+    connectWebSocket();
+  }
+
+  /* ═══════════════════════════════════════
+     WEBSOCKET
+  ═══════════════════════════════════════ */
+  function connectWebSocket() {
+    setWsStatus('connecting', 'Conectando...');
+
+    stompClient = new StompJs.Client({
+      brokerURL: WS_URL,
+      reconnectDelay: 5000,
+      onConnect: () => {
+        setWsStatus('connected', 'WebSocket activo');
+        stompClient.subscribe(WS_TOPIC, msg => {
+          try {
+            const alert = JSON.parse(msg.body);
+            onAlertReceived(alert);
+          } catch (e) { console.error('Parse error', e); }
+        });
+      },
+      onDisconnect: () => setWsStatus('', 'Desconectado'),
+      onStompError: frame => {
+        setWsStatus('error', 'Error WS');
+        console.error('STOMP error', frame);
+      },
+      onWebSocketError: () => setWsStatus('error', 'Sin conexión al alert-service'),
+    });
+
+    stompClient.activate();
+  }
+
+  function setWsStatus(state, label) {
+    const dot = document.getElementById('ws-dot');
+    dot.className = 'ws-dot ' + state;
+    document.getElementById('ws-label').textContent = label;
+  }
+
+  /* ═══════════════════════════════════════
+     ALERT RECEIVED (WebSocket)
+  ═══════════════════════════════════════ */
+  function onAlertReceived(alert) {
+    // Update stats
+    stats.total++;
+    const type = (alert.sensorType || '').toUpperCase();
+    if (stats[type] !== undefined) stats[type]++;
+    updateStats();
+
+    // Add to feed
+    feedAlerts.unshift(alert);
+    renderFeed();
+
+    // Show toast
+    showToast(alert);
+  }
+
+  function updateStats() {
+    document.getElementById('stat-total').textContent    = stats.total;
+    document.getElementById('stat-movement').textContent = stats.MOVEMENT;
+    document.getElementById('stat-temp').textContent     = stats.TEMPERATURE;
+    document.getElementById('stat-access').textContent   = stats.ACCESS;
+  }
+
+  /* ═══════════════════════════════════════
+     FEED RENDER
+  ═══════════════════════════════════════ */
+  function renderFeed() {
+    const feed = document.getElementById('alert-feed');
+    document.getElementById('feed-count').textContent = feedAlerts.length + ' alerta' + (feedAlerts.length !== 1 ? 's' : '');
+
+    if (feedAlerts.length === 0) {
+      feed.innerHTML = `
+        <div class="alert-empty">
+          <div class="icon">📡</div>
+          <p>Esperando alertas críticas...</p>
+          <p style="font-size:11px;color:var(--text3)">Las alertas aparecerán aquí en tiempo real via WebSocket</p>
+        </div>`;
+      return;
+    }
+
+    feed.innerHTML = feedAlerts.slice(0, 50).map((a, i) => {
+      const type  = (a.sensorType || 'UNKNOWN').toUpperCase();
+      const icon  = SENSOR_ICONS[type] || SENSOR_ICONS.default;
+      const time  = formatTime(a.timestamp);
+      const val   = typeof a.value === 'number' ? a.value.toFixed(2) : (a.value || '-');
+      return `
+        <div class="alert-item ${type} ${i === 0 ? 'new-flash' : ''}">
+          <div class="alert-icon">${icon}</div>
+          <div class="alert-body">
+            <div class="alert-msg">${esc(a.message || 'Alerta crítica')}</div>
+            <div class="alert-meta">
+              <span>fuente:</span> ${esc(a.source || '-')} &nbsp;
+              <span>valor:</span> ${val} &nbsp;
+              <span>tipo:</span> ${type}
+            </div>
+          </div>
+          <div class="alert-right">
+            <div class="alert-severity">${esc(a.severity || 'HIGH')}</div>
+            <div class="alert-time">${time}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function clearFeed() {
+    feedAlerts = [];
+    stats = { total: 0, MOVEMENT: 0, TEMPERATURE: 0, ACCESS: 0 };
+    updateStats();
+    renderFeed();
+  }
+
+  /* ═══════════════════════════════════════
+     TOAST NOTIFICATION
+  ═══════════════════════════════════════ */
+  function showToast(alert) {
+    const type = (alert.sensorType || '').toUpperCase();
+    const icon = SENSOR_ICONS[type] || '⚠️';
+    const el = document.createElement('div');
+    el.className = 'toast' + (alert.severity === 'HIGH' ? ' critical' : '');
+    el.innerHTML = `<strong>${icon} ${type}</strong> — ${esc(alert.source || '-')}<br>
+      <span style="color:var(--text2);font-size:11px">${esc(alert.message || '')}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 4200);
+  }
+
+  /* ═══════════════════════════════════════
+     SENSOR FORM
+  ═══════════════════════════════════════ */
+  function onSensorTypeChange() {
+    const type = document.getElementById('sensor-type').value;
+    document.getElementById('value-hint').textContent = VALUE_HINTS[type] || '';
+    document.getElementById('value-label').textContent =
+      type === 'seismic' ? 'Fuerza impacto' :
+      type === 'temperature' ? 'Temperatura (°C)' :
+      type === 'access' ? 'Badge válido (0/1)' : 'Valor';
+
+    // Render presets
+    const presets = PRESETS[type] || [];
+    document.getElementById('presets-container').innerHTML = presets.map((p, i) =>
+      `<button class="preset" onclick="applyPreset(${i})">${p.label}</button>`
+    ).join('');
+  }
+
+  function applyPreset(idx) {
+    const type = document.getElementById('sensor-type').value;
+    const p = (PRESETS[type] || [])[idx];
+    if (!p) return;
+    document.getElementById('sensor-source').value  = p.source;
+    document.getElementById('sensor-value').value   = p.value;
+    document.getElementById('sensor-details').value = p.details;
+  }
+
+  async function sendSensorEvent() {
+    const type    = document.getElementById('sensor-type').value;
+    const source  = document.getElementById('sensor-source').value.trim();
+    const value   = parseFloat(document.getElementById('sensor-value').value);
+    const details = document.getElementById('sensor-details').value.trim();
+    const resultEl = document.getElementById('send-result');
+    const btn = document.getElementById('btn-send');
+
+    if (!source) { resultEl.className='send-result err'; resultEl.textContent='Introduce el ID del sensor'; return; }
+    if (isNaN(value)) { resultEl.className='send-result err'; resultEl.textContent='Introduce un valor numérico'; return; }
+
+    btn.disabled = true;
+    resultEl.className = 'send-result';
+    resultEl.textContent = 'Enviando...';
+
+    // Build payload depending on type
+    let endpoint, payload;
+    if (type === 'seismic') {
+      endpoint = '/api/seismic/events';
+      payload = { sensorId: source, impactForce: value, location: details, details };
+    } else if (type === 'door-open') {
+      endpoint = '/api/door-open/events';
+      payload = { doorId: source, isOpen: value > 0, location: details, details };
+    } else {
+      endpoint = '/api/' + type + '/events';
+      payload = { source, value, details };
+    }
+
+    try {
+      const res = await fetch(GATEWAY + endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader,
+          'X-Correlation-Id': 'ui-' + Date.now()
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok || res.status === 202) {
+        resultEl.className = 'send-result ok';
+        resultEl.textContent = '✓ Evento enviado (' + res.status + ')';
+      } else {
+        resultEl.className = 'send-result err';
+        resultEl.textContent = '✗ Error ' + res.status + ' — ' + (await res.text()).slice(0, 80);
+      }
+    } catch (e) {
+      resultEl.className = 'send-result err';
+      resultEl.textContent = '✗ Sin conexión con el gateway';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* ═══════════════════════════════════════
+     HISTORY TABLE
+  ═══════════════════════════════════════ */
+  async function loadHistory() {
+    const tbody = document.getElementById('history-body');
+    const info  = document.getElementById('history-info');
+    try {
+      const res = await fetch(GATEWAY + '/api/alerts', {
+        headers: { 'Authorization': authHeader }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const alerts = await res.json();
+
+      if (!alerts.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No hay alertas registradas</td></tr>`;
+        info.textContent = '0 registros';
+        return;
+      }
+
+      tbody.innerHTML = alerts.map(a => {
+        const type = (a.sensorType || '').toUpperCase();
+        return `<tr>
+          <td><span class="tag tag-${type}">${type}</span></td>
+          <td><span class="tag tag-${a.severity || 'HIGH'}">${a.severity || 'HIGH'}</span></td>
+          <td>${esc(a.source || '-')}</td>
+          <td>${typeof a.value === 'number' ? a.value.toFixed(2) : '-'}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(a.message || '-')}</td>
+          <td>${formatTime(a.timestamp)}</td>
+        </tr>`;
+      }).join('');
+
+      info.textContent = alerts.length + ' registro' + (alerts.length !== 1 ? 's' : '') +
+        ' · ' + formatTime(new Date().toISOString());
+
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--red);padding:20px">Error al cargar historial: ${esc(e.message)}</td></tr>`;
+      info.textContent = 'Error';
+    }
+  }
+
+  /* ═══════════════════════════════════════
+     UTILITIES
+  ═══════════════════════════════════════ */
+  function formatTime(ts) {
+    if (!ts) return '-';
+    try {
+      const d = new Date(ts);
+      return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
+             ' ' + d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+    } catch { return String(ts).slice(0, 19); }
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>

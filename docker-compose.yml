@@ -1,0 +1,137 @@
+services:
+
+  # ============================================================
+  # RabbitMQ - Message Broker para comunicación asíncrona
+  # Los sensores publican alertas críticas → alert-service las consume
+  # ============================================================
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"     # Puerto AMQP para los microservicios
+      - "15672:15672"   # Puerto Management UI (usuario: guest / guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Eureka Server - Service Discovery (Spring Cloud Netflix)
+  # ============================================================
+  eureka-server:
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8761/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - rabbitmq
+
+  alert-service:
+    build:
+      context: .
+      dockerfile: alert-service/Dockerfile
+    environment:
+      INTERNAL_TOKEN: stark-internal-token
+      RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8090:8090"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+
+  sensor-movement-service:
+    build:
+      context: .
+      dockerfile: sensor-movement-service/Dockerfile
+    environment:
+      ALERT_SERVICE_URL: http://alert-service:8090
+      INTERNAL_TOKEN: stark-internal-token
+      RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8081:8081"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      alert-service:
+        condition: service_started
+
+  sensor-temperature-service:
+    build:
+      context: .
+      dockerfile: sensor-temperature-service/Dockerfile
+    environment:
+      ALERT_SERVICE_URL: http://alert-service:8090
+      INTERNAL_TOKEN: stark-internal-token
+      RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8082:8082"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      alert-service:
+        condition: service_started
+
+  sensor-access-service:
+    build:
+      context: .
+      dockerfile: sensor-access-service/Dockerfile
+    environment:
+      ALERT_SERVICE_URL: http://alert-service:8090
+      INTERNAL_TOKEN: stark-internal-token
+      RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8083:8083"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      alert-service:
+        condition: service_started
+
+  gateway-service:
+    build:
+      context: .
+      dockerfile: gateway-service/Dockerfile
+    environment:
+      MOVEMENT_SERVICE_URL: http://sensor-movement-service:8081
+      TEMPERATURE_SERVICE_URL: http://sensor-temperature-service:8082
+      ACCESS_SERVICE_URL: http://sensor-access-service:8083
+      ALERT_SERVICE_URL: http://alert-service:8090
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8080:8080"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      sensor-movement-service:
+        condition: service_started
+      sensor-temperature-service:
+        condition: service_started
+      sensor-access-service:
+        condition: service_started
+      alert-service:
+        condition: service_started
