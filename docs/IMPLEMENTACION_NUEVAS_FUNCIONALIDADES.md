@@ -1,5 +1,6 @@
 # Implementación de Nuevas Funcionalidades — Stark Industries Security System
 
+
 ---
 
 ## Índice

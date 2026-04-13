@@ -6,6 +6,7 @@ El proyecto implementa un sistema de seguridad distribuido basado en microservic
 
 La arquitectura elegida prioriza modularidad y trazabilidad: `gateway-service` actúa como puerta de entrada, los microservicios de sensores procesan eventos de forma especializada, y `alert-service` centraliza el almacenamiento temporal de alertas y su difusión en tiempo real.
 
+
 ## 2. Mapa “enunciado → implementación”
 
 ### Gestión de sensores

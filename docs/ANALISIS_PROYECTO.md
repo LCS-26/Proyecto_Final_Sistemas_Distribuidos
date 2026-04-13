@@ -1,5 +1,6 @@
 # Análisis Completo del Proyecto — Stark Industries Security System
 
+
 ---
 
 ## 1. Estructura General del Proyecto
