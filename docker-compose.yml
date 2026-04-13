@@ -18,6 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
+
   # ============================================================
   # Eureka Server - Service Discovery (Spring Cloud Netflix)
   # ============================================================
